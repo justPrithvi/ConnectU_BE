@@ -6,6 +6,7 @@ import { JwtStrategy } from './Guards/jwt.strategy';
 import { JwtAuthGuard } from './Guards/jwt-auth.guard';
 import { UserModule } from './user/user.module';
 import { CommonModule } from './common/common.module';
+import { ConnectionModule } from './connection/connection.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { CommonModule } from './common/common.module';
     // Register all your modules here. 
     AuthModule,
     UserModule,
-    CommonModule
+    CommonModule,
+    ConnectionModule
   ],
   providers: [   
     // Global injectables/providers . This is not ideal and need to change

@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { JwtAuthGuard } from "../Guards/jwt-auth.guard";
 
 @Controller('user')
 export class UserController {
@@ -12,6 +13,7 @@ export class UserController {
   }
 
   @Post('profile')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('image')) // "image" is the key used in FormData.append()
   async postUserProfile(
     @UploadedFile() file: Express.Multer.File,

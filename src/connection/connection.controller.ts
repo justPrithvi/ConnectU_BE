@@ -3,6 +3,7 @@ import { CommonService } from "src/common/common.service";
 import { ConnectionService } from "./connection.service";
 import { AuthGuard } from "@nestjs/passport";
 import { JwtAuthGuard } from "src/Guards/jwt-auth.guard";
+import { UserInfoDto } from "src/dto/user/userSocket";
 
 @Controller()
 export class ConnectionController {
@@ -10,7 +11,7 @@ export class ConnectionController {
 
     @Post('/registerNewConnection')
     @UseGuards(JwtAuthGuard)
-    registerNewConnection(@Body() body:any) {
+    registerNewConnection(@Body() body:UserInfoDto) {
         return this.connectionService.registerConnection(body)
     }
 

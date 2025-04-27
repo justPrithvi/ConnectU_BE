@@ -2,9 +2,6 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { UserPhotos } from './userPhotos.entity';
 import { UserInterests } from './userIntrests.entity';
 import { Gender } from './gender.entity';
-// import { Gender } from './gender.entity';
-// import { UserPhotos } from './userPhotos.entity';
-// import { UserInterests } from './userIntrests.entity';
 
 @Entity()
 export class User {
@@ -12,29 +9,29 @@ export class User {
   id: number;
 
   @Column({ type: 'varchar', length: 100 })
-  username: string;
+  fullName: string;
 
   @Column({ type: 'varchar', length: 100 })
   email: string;
 
   @Column({ type: 'varchar', length: 255 })
-  password: string;  // Make sure to hash the password before saving it to the DB
+  password: string; // Hash the password before saving
 
-  @Column({ type: 'varchar', length: 10})
-  phoneNumber: Number
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  phoneNumber: string;
 
-  @Column({ type: 'varchar', length: 10})
-  age: Number
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  age: string;
 
-  @ManyToOne(() => Gender, { eager: false })
-  @JoinColumn({ name: 'gender' }) // explicitly name it genderId to match what TypeORM expects
+  @ManyToOne(() => Gender, { eager: false, nullable: true })
+  @JoinColumn({ name: 'gender' })
   gender: Gender;
-  
-  @Column({ type: 'varchar', length: 10})
-  bio: string
 
-  @Column({ type: 'varchar', length:10})
-  location: string
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  bio: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  location: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -42,11 +39,9 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // ✅ Add OneToMany for photos
   @OneToMany(() => UserPhotos, (photo) => photo.user)
   photos: UserPhotos[];
 
-  // ✅ Add OneToMany for interests
   @OneToMany(() => UserInterests, (interest) => interest.user)
   interests: UserInterests[];
 }

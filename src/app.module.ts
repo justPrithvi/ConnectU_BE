@@ -7,6 +7,8 @@ import { JwtAuthGuard } from './Guards/jwt-auth.guard';
 import { UserModule } from './user/user.module';
 import { CommonModule } from './common/common.module';
 import { ConnectionModule } from './connection/connection.module';
+import { ConnectionGateway } from './gateway/connection.gateway';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -35,8 +37,10 @@ import { ConnectionModule } from './connection/connection.module';
   providers: [   
     // Global injectables/providers . This is not ideal and need to change
     // Rather create a global module, Import global module here and them import it in other module to use the global providers 
+    JwtService,
     JwtStrategy, 
-    JwtAuthGuard
+    JwtAuthGuard,
+    ConnectionGateway
   ], 
   exports: [
     // if you want the registerd injectable to be used in the registerd modules

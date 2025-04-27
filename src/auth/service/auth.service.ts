@@ -10,12 +10,12 @@ export class AuthService {
     private userService: UserService
   ) {}
 
-  async signup(username: string, email: string, password: string) {
+  async signup(fullName: string, email: string, password: string) {
     try {
       const userExists = await this.userService.getUser({email});
       if (userExists) throw new BadRequestException("User already exists");
 
-      const newUser = await this.userService.createUser({username, email, password});
+      const newUser = await this.userService.createUser({fullName, email, password});
       return new GlobalResponseDto("User created successfully", newUser);
     } catch (error) {
       console.error("Signup Error:", error);

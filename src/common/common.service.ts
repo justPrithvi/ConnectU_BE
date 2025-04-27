@@ -3,6 +3,7 @@ import { GenderRepository } from "src/repositories/gender.repository";
 import { IntrestRepository } from "src/repositories/intrests.repository";
 import * as AWS from 'aws-sdk'; // Correct import for AWS SDK v2
 import Redis from 'ioredis'; // Redis import
+import { UserInfoDto, UserSocketDto } from "src/dto/user/userSocket";
 
 @Injectable()
 export class CommonService {
@@ -51,14 +52,67 @@ export class CommonService {
     return this.SQSInstance;
   }
 
-  // Redis methods
+  // Sqs Polling
+  async pollMessagesFromSQS() {
+    try {
+      const params: AWS.SQS.ReceiveMessageRequest = {
+        QueueUrl: process.env.QUEUE_URL, // or pass this as a parameter if you want
+        MaxNumberOfMessages: 10,
+        WaitTimeSeconds: 20, // Long polling for better efficiency
+        VisibilityTimeout: 30,
+      };
+
+      const data = await this.SQSInstance.receiveMessage(params).promise();
+      console.log(data.Messages);
+      
+      if (data.Messages) {
+        for (const message of data.Messages) {
+          console.log('Received message:', message.Body);
+        }
+      } else {
+        console.log('No messages found in SQS.');
+      }
+    } catch (error) {
+      console.error('Error while polling messages from SQS:', error);
+    }
+  }
+
+
+  startPollingSQS() {
+    setInterval(async () => {
+      console.log("Aam i polling");
+      await this.pollMessagesFromSQS();
+    }, 5000); // every 5 seconds
+  }
+
+
+  // Helper function to delete message
+  private async deleteMessageFromSQS(receiptHandle: string) {
+    const params: AWS.SQS.DeleteMessageRequest = {
+      QueueUrl: process.env.SQS_QUEUE_URL,
+      ReceiptHandle: receiptHandle,
+    };
+
+    try {
+      await this.SQSInstance.deleteMessage(params).promise();
+      console.log('Deleted message from SQS.');
+    } catch (error) {
+      console.error('Error deleting message from SQS:', error);
+    }
+  }
+
+
+
+
 
   // Set a key-value pair in Redis
-  async setUserSocket(key: string, value: any) {
+  async setUserSocket(key: string, userInfo: UserInfoDto, socketId: string) {
     try {
-        console.log("setting", key, value);
-        
-      await this.redisClient.set(key, value);
+      const data = JSON.stringify({
+        userInfo,
+        socketId
+      })
+      await this.redisClient.set(key, data);
     } catch (error) {
       console.error("Error setting data in Redis:", error);
       throw new Error("Failed to set data in Redis.");

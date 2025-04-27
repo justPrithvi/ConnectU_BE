@@ -23,21 +23,17 @@ export class UserRepository {
   }
 
   // Example of creating a new user
-  async createUser(username: string, email: string, password: string): Promise<User> {
-    const user = this.repository.create({ username, email, password });
+  async createUser(fullName: string, email: string, password: string): Promise<User> {
+    const user = this.repository.create({ fullName:fullName, email, password });
     return this.repository.save(user);
   }
 
   async saveUser(body: any) {
-    console.log(body);
-    
     const existingUser = await this.repository.findOne({ where: { email: body.email } });
-  
     if (!existingUser) {
       throw new Error('User not found');
     }
-  
-    existingUser.age = parseInt(body.age);
+    existingUser.age = body.age;
     existingUser.gender = body.gender;
     existingUser.bio = body.bio;
     existingUser.phoneNumber = body.phoneNumber || 9667352982

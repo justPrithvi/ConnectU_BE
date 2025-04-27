@@ -15,8 +15,8 @@ export class UserService {
         return user
     }
 
-    async createUser(body: {username: string, email: string, password: string}) {
-        return await this.userRepo.createUser(body.username, body.email, body.password);
+    async createUser(body: {fullName: string, email: string, password: string}) {
+      return await this.userRepo.createUser(body.fullName, body.email, body.password);
     }
 
     private async uploadFileToS3(file: any): Promise<string> {

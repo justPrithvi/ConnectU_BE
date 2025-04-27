@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { CommonService } from "src/common/common.service";
+import { UserInfoDto } from "src/dto/user/userSocket";
 import { UserInterests } from "src/entities/userIntrests.entity";
 
 @Injectable()

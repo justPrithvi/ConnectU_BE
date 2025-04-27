@@ -21,7 +21,7 @@ export class ConnectionService {
         const params = {
           QueueUrl: process.env.QUEUE_URL, // your queue URL
           MessageBody: JSON.stringify(payload),
-          DelaySeconds: 0, // No delay, instant send. (can be 0–900 seconds if you want delay)
+          DelaySeconds: 10, // No delay, instant send. (can be 0–900 seconds if you want delay)
         };
 
         try {
@@ -37,6 +37,4 @@ export class ConnectionService {
     async deleteConnectionRequest(body: any) {
         
     }
-      
-
 }

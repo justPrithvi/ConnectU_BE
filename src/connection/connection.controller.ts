@@ -14,10 +14,4 @@ export class ConnectionController {
     registerNewConnection(@Body() body:UserInfoDto) {
         return this.connectionService.registerConnection(body)
     }
-
-    @Post('deleteConnectionRequest') 
-    @UseGuards(JwtAuthGuard)
-    deleteConnectionRequest(@Body() body:any) {
-        return this.connectionService.deleteConnectionRequest(body)
-    }
 }

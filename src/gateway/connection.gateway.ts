@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt'; // Import JwtService
 import { Injectable } from '@nestjs/common';
 import { CommonService } from 'src/common/common.service';
 import { UserInfoDto, UserSocketDto } from 'src/dto/user/userSocket';
+import { ConnectionService } from 'src/connection/connection.service';
 
 @Injectable()
 @WebSocketGateway({
@@ -21,11 +22,12 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
 
     constructor(
         private readonly jwtService: JwtService,
-        private readonly commonService: CommonService
+        private readonly commonService: CommonService,
+        private readonly connectionService: ConnectionService
     ) {}
 
     async handleConnection(client: Socket) {
-        console.log(`Client disconnected: ${client.id}`);
+        console.log(`Client connected: ${client.id}`);
         try {
             const token = client.handshake.headers.authorization?.split(' ')[1]; // Extract Bearer token
             const decoded = this.jwtService.verify(token, { secret: process.env.JWT_SECRET });
@@ -41,8 +43,7 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
     }
 
     handleDisconnect(client: Socket) {
-        console.log(`Client disconnected: ${client.id}`);
-        
+        // console.log(`Client disconnected: ${client.id}`);
         for (const [username, socketId] of this.userSockets.entries()) {
             if (socketId === client.id) {
                 this.userSockets.delete(username);
@@ -54,10 +55,11 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
 
     @SubscribeMessage('addToRedis')
     handleSetToRedis(@MessageBody() userInfo: UserInfoDto, @ConnectedSocket() client: Socket) {
-        console.log(`Save userInfo from redis ${client.id}:`, userInfo);
+        // console.log(`Save userInfo to redis ${client.id}:`, userInfo);
         const username = userInfo.email;
         if (username) {
-            this.commonService.setUserSocket(userInfo.email, userInfo, client.id)
+            this.commonService.saveUserSocket(userInfo.email, userInfo, client.id)
+            this.connectionService.findConnection(userInfo, client);
         }
     }
 
@@ -67,6 +69,7 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
         const username = userInfo.email;
         if (username) {
             this.commonService.delUserSocket(userInfo.email)
+            this.commonService.deleteUserFromConnectionPool(userInfo)
         }
     }
 

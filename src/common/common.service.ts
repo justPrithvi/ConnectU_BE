@@ -10,6 +10,7 @@ export class CommonService {
   private s3Instance: AWS.S3;
   private SQSInstance: AWS.SQS;
   private redisClient: Redis;
+  private connectionPoolKey = 'connection-pool-map'
 
   constructor(
     private readonly intrestRepo: IntrestRepository, // or any other dependencies
@@ -106,13 +107,17 @@ export class CommonService {
 
 
   // Set a key-value pair in Redis
-  async setUserSocket(key: string, userInfo: UserInfoDto, socketId: string) {
+  async saveUserSocket(userEmail: string, userInfo: UserInfoDto, socketId: string) {
+    const socketKey = 'user:socket:map'
     try {
-      const data = JSON.stringify({
+      const existing = await this.redisClient.get(socketKey)
+      const map = existing ? JSON.parse(existing) : {};
+
+      map[userEmail] = {
         userInfo,
         socketId
-      })
-      await this.redisClient.set(key, data);
+      };
+      await this.redisClient.set(socketKey, JSON.stringify(map));
     } catch (error) {
       console.error("Error setting data in Redis:", error);
       throw new Error("Failed to set data in Redis.");
@@ -120,12 +125,46 @@ export class CommonService {
   }
 
   // Get a value by key from Redis
-  async getUserSocket(key: string): Promise<string | null> {
+  async getUserSocket(userId: string): Promise<string | null> {
+    const socketKey = 'user:socket:map'
     try {
-      return await this.redisClient.get(key);
+      const userSocketMap = JSON.parse(await this.redisClient.get(socketKey))
+      return await userSocketMap.get(userId);
     } catch (error) {
       console.error("Error getting data from Redis:", error);
       throw new Error("Failed to get data from Redis.");
+    }
+  }
+
+  async findUserConnection(key:string) {
+    const connectionPool = JSON.parse(await this.redisClient.get(this.connectionPoolKey))
+    console.log(connectionPool,"=========================");
+    return ''
+
+  }
+
+  async saveUserToConnectionPool(key: string, email: string) {
+    try {
+      const existing = await this.redisClient.get(this.connectionPoolKey) 
+      const connectionPool = existing ? JSON.parse(existing) : {}
+      connectionPool[key] = email
+      await this.redisClient.set(this.connectionPoolKey, JSON.stringify(connectionPool))
+    } catch (error) {
+      console.error("Error setting data in connction pool:", error);
+      throw new Error("Failed to set user in connection pool.");
+    }
+  }
+
+  async deleteUserFromConnectionPool(userInfo: any) {
+    try {
+      const userMood = userInfo.selectedInterests; // [2, 5]
+      const userInterestIds = userInfo.interests.map((item:any) => item.interest.id);
+      const key = `Mood:[${userMood.sort().join(',')}]-Interests:[${userInterestIds.sort().join(',')}]`;
+      const existing = await this.redisClient.get(this.connectionPoolKey) 
+      const connectionPool = existing ? JSON.parse(existing) : {}
+      connectionPool.del(key)
+    } catch (error) {
+      throw new Error("Failed to remove user from connection pool.");
     }
   }
 

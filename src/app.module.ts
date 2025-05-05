@@ -7,7 +7,7 @@ import { JwtAuthGuard } from './Guards/jwt-auth.guard';
 import { UserModule } from './user/user.module';
 import { CommonModule } from './common/common.module';
 import { ConnectionModule } from './connection/connection.module';
-import { ConnectionGateway } from './gateway/connection.gateway';
+import { ConnectionGateway } from './connection/connection.gateway';
 import { JwtService } from '@nestjs/jwt';
 
 @Module({
@@ -40,12 +40,11 @@ import { JwtService } from '@nestjs/jwt';
     JwtService,
     JwtStrategy, 
     JwtAuthGuard,
-    ConnectionGateway
   ], 
   exports: [
     // if you want the registerd injectable to be used in the registerd modules
     JwtStrategy,
-    JwtAuthGuard,
+    JwtAuthGuard,    
   ]
 })
 export class AppModule {}

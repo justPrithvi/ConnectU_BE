@@ -1,10 +1,11 @@
 import { WebSocketGateway, SubscribeMessage, MessageBody, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect, ConnectedSocket } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt'; // Import JwtService
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CommonService } from 'src/common/common.service';
 import { UserInfoDto, UserSocketDto } from 'src/dto/user/userSocket';
 import { ConnectionService } from 'src/connection/connection.service';
+import { userInfo } from 'os';
 
 @Injectable()
 @WebSocketGateway({
@@ -23,6 +24,7 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
     constructor(
         private readonly jwtService: JwtService,
         private readonly commonService: CommonService,
+        @Inject(forwardRef(() => ConnectionService))
         private readonly connectionService: ConnectionService
     ) {}
 
@@ -37,13 +39,13 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
                 return;
             }
         } catch (error) {
-            console.log('Invalid token, disconnecting client', error);
+            client.emit('auth_error', 'Token expired or invalid');
             client.disconnect();
         }
     }
 
     handleDisconnect(client: Socket) {
-        // console.log(`Client disconnected: ${client.id}`);
+        console.log(`Client disconnected: ${client.id}`);
         for (const [username, socketId] of this.userSockets.entries()) {
             if (socketId === client.id) {
                 this.userSockets.delete(username);
@@ -63,9 +65,17 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
         }
     }
 
+    @SubscribeMessage('removeSocketMap')
+    handleRemoveSocketeMap(@MessageBody() userEmail: string, @ConnectedSocket() client: Socket) {
+        console.log(userEmail,"==========useremail to delete");
+        
+        if (userEmail) {
+            this.commonService.delUserSocket(userEmail)
+        }
+    } 
     @SubscribeMessage('removeFromRedis')
     handleRemoveFromredis(@MessageBody() userInfo: UserInfoDto, @ConnectedSocket() client: Socket) {
-        console.log(`Deleting userInfo from redis ${client.id}:`, userInfo);
+        // console.log(`Deleting userInfo from redis ${client.id}:`, userInfo);
         const username = userInfo.email;
         if (username) {
             this.commonService.delUserSocket(userInfo.email)
@@ -75,6 +85,7 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
 
     // Method to send events to a specific client based on their socket ID
     sendEventToClient(clientId: string, event: string, payload: any) {
+        console.log(clientId, event, payload,"==============");
         this.server.to(clientId).emit(event, payload);
     }
 }

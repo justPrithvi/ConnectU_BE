@@ -119,62 +119,112 @@ export class CommonService {
       };
       await this.redisClient.set(socketKey, JSON.stringify(map));
     } catch (error) {
-      console.error("Error setting data in Redis:", error);
-      throw new Error("Failed to set data in Redis.");
+      throw new Error("Failed to set user data in Redis.");
     }
   }
 
   // Get a value by key from Redis
-  async getUserSocket(userId: string): Promise<string | null> {
-    const socketKey = 'user:socket:map'
+  async getUserSocket(userId: string) {
+    const socketKey = 'user:socket:map';
     try {
-      const userSocketMap = JSON.parse(await this.redisClient.get(socketKey))
-      return await userSocketMap.get(userId);
+      const userSocketMap = JSON.parse(await this.redisClient.get(socketKey));
+      
+      // Check if the userId exists in the map and return the corresponding socket value
+      return userSocketMap[userId] || null;
     } catch (error) {
-      console.error("Error getting data from Redis:", error);
-      throw new Error("Failed to get data from Redis.");
+      throw new Error("Failed to get user data from Redis.");
     }
   }
 
-  async findUserConnection(key:string) {
-    const connectionPool = JSON.parse(await this.redisClient.get(this.connectionPoolKey))
-    console.log(connectionPool,"=========================");
-    return ''
-
+  createUserConnectionPoolKey(userInfo) {
+    const userMood = userInfo.selectedInterests; // [2, 5]
+    const userInterestIds = userInfo.interests.map((item:any) => item.interest.id);
+    const key = `Mood:[${userMood.sort().join(',')}]-Interests:[${userInterestIds.sort().join(',')}]`;
+    return key
   }
 
-  async saveUserToConnectionPool(key: string, email: string) {
+  async findUserConnection(userInfo) {
+    const key = this.createUserConnectionPoolKey(userInfo);
+
+    const existing = await this.redisClient.get(this.connectionPoolKey);
+    if (!existing) return null;
+
+    const connectionPool = JSON.parse(existing);
+
+    for (const [poolKey, userInfo] of Object.entries(connectionPool)) {
+      if (this.isSufficientMatch(key, poolKey)) {
+        // Delete matched entry and update Redis
+        delete connectionPool[poolKey];
+        await this.redisClient.set(this.connectionPoolKey, JSON.stringify(connectionPool));
+        return userInfo;
+      }
+    }
+
+    return null;
+  }
+
+  private isSufficientMatch(userKey: string, poolKey: string): boolean {
+    const parseKey = (key: string) => {
+      const moodMatch = key.match(/Mood:\[(.*?)\]/);
+      const interestMatch = key.match(/Interests:\[(.*?)\]/);
+  
+      const moods = moodMatch?.[1]?.split(',').map(Number) || [];
+      const interests = interestMatch?.[1]?.split(',').map(Number) || [];
+  
+      return { moods, interests };
+    };
+  
+    const user = parseKey(userKey);
+    const pool = parseKey(poolKey);
+    
+    const moodMatch = user.moods.some(m => pool.moods.includes(m));
+    const commonInterests = user.interests.filter(i => pool.interests.includes(i));
+  
+    return moodMatch && commonInterests.length >= 1; // Adjust threshold as needed
+  }
+  
+  
+
+  async saveUserToConnectionPool(userInfo) {
     try {
+      const key = this.createUserConnectionPoolKey(userInfo)      
       const existing = await this.redisClient.get(this.connectionPoolKey) 
       const connectionPool = existing ? JSON.parse(existing) : {}
-      connectionPool[key] = email
+      connectionPool[key] = {
+        email:userInfo.email, 
+        name: userInfo.fullName
+      }
       await this.redisClient.set(this.connectionPoolKey, JSON.stringify(connectionPool))
     } catch (error) {
-      console.error("Error setting data in connction pool:", error);
       throw new Error("Failed to set user in connection pool.");
     }
   }
 
   async deleteUserFromConnectionPool(userInfo: any) {
     try {
-      const userMood = userInfo.selectedInterests; // [2, 5]
-      const userInterestIds = userInfo.interests.map((item:any) => item.interest.id);
-      const key = `Mood:[${userMood.sort().join(',')}]-Interests:[${userInterestIds.sort().join(',')}]`;
+      const key = this.createUserConnectionPoolKey(userInfo)
       const existing = await this.redisClient.get(this.connectionPoolKey) 
       const connectionPool = existing ? JSON.parse(existing) : {}
-      connectionPool.del(key)
-    } catch (error) {
+      delete connectionPool[key];
+      await this.redisClient.set(this.connectionPoolKey, JSON.stringify(connectionPool))
+    } catch (error) {      
+      console.log(error,"======");
+      
       throw new Error("Failed to remove user from connection pool.");
     }
   }
 
   // Delete a key from Redis
-  async delUserSocket(key: string) {
+  async delUserSocket(userId: string): Promise<void> {
+    const socketKey = 'user:socket:map';
     try {
-      await this.redisClient.del(key);
+      const userSocketMap = JSON.parse(await this.redisClient.get(socketKey)); // Fetch and parse the existing data
+      if (userSocketMap && userSocketMap[userId]) {
+        delete userSocketMap[userId]; // Remove the userId from the map
+        await this.redisClient.set(socketKey, JSON.stringify(userSocketMap)); // Save the updated map back to Redis
+      }
     } catch (error) {
-      console.error("Error deleting data from Redis:", error);
-      throw new Error("Failed to delete data from Redis.");
+      throw new Error("Failed to delete user socket from Redis.");
     }
   }
 

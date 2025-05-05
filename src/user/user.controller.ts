@@ -9,7 +9,7 @@ export class UserController {
 
   @Post('')
   async getUser(@Body() body: {email: string}) {
-      return this.userService.getUser(body)
+    return this.userService.getUser(body)
   }
 
   @Post('profile')

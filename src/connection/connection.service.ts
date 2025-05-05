@@ -1,13 +1,16 @@
-import { Injectable } from "@nestjs/common";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { Socket } from "socket.io";
 import { CommonService } from "src/common/common.service";
-import { ConnectionGateway } from "src/gateway/connection.gateway";
+import { ConnectionGateway } from "src/connection/connection.gateway";
+import { UserInfoDto } from "src/dto/user/userSocket";
 
 @Injectable()
 export class ConnectionService {
   constructor(
       private readonly commonService: CommonService,
       // private readonly connectionGateWay: ConnectionGateway
+      @Inject(forwardRef(() => ConnectionGateway))
+      private readonly connectionGateway: ConnectionGateway,
   ) {}
   async registerConnection(body: any) {
       const SQS = await this.commonService.getSQSInstance();
@@ -36,17 +39,17 @@ export class ConnectionService {
       }
   }
 
-  async findConnection (userInfo: any, client: Socket) {
-    console.log(userInfo, client.id);
-    const userMood = userInfo.selectedInterests; // [2, 5]
-    const userInterestIds = userInfo.interests.map((item:any) => item.interest.id);
-    const key = `Mood:[${userMood.sort().join(',')}]-Interests:[${userInterestIds.sort().join(',')}]`;
-    console.log(key);
-    const connectedPartner = await this.commonService.findUserConnection(key)
+  async findConnection (userInfo: UserInfoDto, client: Socket) {
+    const connectedPartner: any = await this.commonService.findUserConnection(userInfo)
     if(connectedPartner) {
-      // this.connectionGateWay.sendEventToClient(client.id, 'matchFound' ,'udesh.raj@gmail.com')
+      console.log(connectedPartner);
+      
+      const connectedPartnerSocket = await this.commonService.getUserSocket(connectedPartner.email);
+      this.connectionGateway.sendEventToClient(client.id, 'matchFound' , connectedPartner)
+      this.connectionGateway.sendEventToClient(connectedPartnerSocket.socketId, 'matchFound' , {email: userInfo.email,name: userInfo.fullName})
+
     } else {
-      await this.commonService.saveUserToConnectionPool(key, userInfo.email)
+      await this.commonService.saveUserToConnectionPool(userInfo)
     }
   }
 }

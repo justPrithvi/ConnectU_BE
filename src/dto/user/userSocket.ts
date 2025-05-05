@@ -12,6 +12,7 @@ export class InterestDto {
 
   
   export class UserInfoDto {
+    fullName: string;
     email: string;
     gender: GenderDto;             // Using GenderDto as the structure for the gender object
     interests: InterestDto[];              // Interests could be a list of objects, you can refine this type based on actual data structure

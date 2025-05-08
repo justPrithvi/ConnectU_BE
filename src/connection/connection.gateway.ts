@@ -6,6 +6,7 @@ import { CommonService } from 'src/common/common.service';
 import { UserInfoDto, UserSocketDto } from 'src/dto/user/userSocket';
 import { ConnectionService } from 'src/connection/connection.service';
 import { userInfo } from 'os';
+import { MessageDto } from 'src/dto/Message.dto';
 
 @Injectable()
 @WebSocketGateway({
@@ -46,13 +47,6 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
 
     handleDisconnect(client: Socket) {
         console.log(`Client disconnected: ${client.id}`);
-        for (const [username, socketId] of this.userSockets.entries()) {
-            if (socketId === client.id) {
-                this.userSockets.delete(username);
-                console.log(`User ${username} disconnected.`);
-                break;
-            }
-        }
     }
 
     @SubscribeMessage('addToRedis')
@@ -65,10 +59,17 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
         }
     }
 
-    @SubscribeMessage('removeSocketMap')
-    handleRemoveSocketeMap(@MessageBody() userEmail: string, @ConnectedSocket() client: Socket) {
-        console.log(userEmail,"==========useremail to delete");
+    @SubscribeMessage('sendMessage')
+    async sendMessage(@MessageBody() newMsg: MessageDto, @ConnectedSocket() client: Socket) {
+        console.log(newMsg);
         
+        const receiverSocket = await this.commonService.getUserSocket(newMsg.to)
+        
+        this.sendEventToClient(receiverSocket.socketId, "receive_message", newMsg.text)        
+    }
+
+    @SubscribeMessage('removeSocketMap')
+    handleRemoveSocketeMap(@MessageBody() userEmail: string, @ConnectedSocket() client: Socket) {        
         if (userEmail) {
             this.commonService.delUserSocket(userEmail)
         }

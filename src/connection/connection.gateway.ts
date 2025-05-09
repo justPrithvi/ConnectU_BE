@@ -7,6 +7,9 @@ import { UserInfoDto, UserSocketDto } from 'src/dto/user/userSocket';
 import { ConnectionService } from 'src/connection/connection.service';
 import { userInfo } from 'os';
 import { MessageDto } from 'src/dto/Message.dto';
+import { MessageService } from 'src/message/messege.service';
+import { OnModuleInit } from '@nestjs/common';
+import Redis from 'ioredis';
 
 @Injectable()
 @WebSocketGateway({
@@ -19,15 +22,19 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
     @WebSocketServer()
     server: Server;
 
-    // Store the mapping of username to socketId
-    private userSockets = new Map<string, string>();
-
+    private redisClient: Redis
+    onModuleInit() {
+        this.listenForMessageEvents();
+    }
     constructor(
         private readonly jwtService: JwtService,
         private readonly commonService: CommonService,
         @Inject(forwardRef(() => ConnectionService))
-        private readonly connectionService: ConnectionService
-    ) {}
+        private readonly connectionService: ConnectionService,
+        private readonly messgaeService: MessageService,
+    ) {
+        this.redisClient = new Redis();
+    }
 
     async handleConnection(client: Socket) {
         console.log(`Client connected: ${client.id}`);
@@ -60,13 +67,30 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
     }
 
     @SubscribeMessage('sendMessage')
-    async sendMessage(@MessageBody() newMsg: MessageDto, @ConnectedSocket() client: Socket) {
-        console.log(newMsg);
-        
-        const receiverSocket = await this.commonService.getUserSocket(newMsg.to)
-        
-        this.sendEventToClient(receiverSocket.socketId, "receive_message", newMsg.text)        
+    async sendMessage(@MessageBody() newMsg: MessageDto, @ConnectedSocket() client: Socket) {        
+        await this.messgaeService.saveMessageToDB(newMsg);
     }
+
+    private listenForMessageEvents() {
+        this.redisClient.subscribe('message.saved', (err, count) => {
+            if (err) {
+                console.error("Error subscribing to Redis channel:", err);
+                return;
+            }
+            console.log(`Subscribed to ${count} channel(s).`);
+        });
+
+        this.redisClient.on('message', async (channel, message) => {            
+            if (channel === 'message.saved') {
+                const newMsg: MessageDto = JSON.parse(message);
+                const receiverSocket = await this.commonService.getUserSocket(newMsg.to) 
+                this.sendEventToClient(receiverSocket.socketId, "receive_message", newMsg.text)        
+            }
+        });
+    }
+
+
+  
 
     @SubscribeMessage('removeSocketMap')
     handleRemoveSocketeMap(@MessageBody() userEmail: string, @ConnectedSocket() client: Socket) {        
@@ -85,8 +109,7 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
     }
 
     // Method to send events to a specific client based on their socket ID
-    sendEventToClient(clientId: string, event: string, payload: any) {
-        console.log(clientId, event, payload,"==============");
+    sendEventToClient(clientId: string, event: string, payload: any) {        
         this.server.to(clientId).emit(event, payload);
     }
 }

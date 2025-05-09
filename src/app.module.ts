@@ -9,6 +9,7 @@ import { CommonModule } from './common/common.module';
 import { ConnectionModule } from './connection/connection.module';
 import { ConnectionGateway } from './connection/connection.gateway';
 import { JwtService } from '@nestjs/jwt';
+import { MessageModule } from './message/message.module';
 
 @Module({
   imports: [
@@ -32,7 +33,8 @@ import { JwtService } from '@nestjs/jwt';
     AuthModule,
     UserModule,
     CommonModule,
-    ConnectionModule
+    ConnectionModule,
+    MessageModule
   ],
   providers: [   
     // Global injectables/providers . This is not ideal and need to change
